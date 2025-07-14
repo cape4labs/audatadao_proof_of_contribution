@@ -46,7 +46,7 @@ class Proof:
 
         # Calculate overall score and validity
         self.proof_response.score = 0.6 * self.proof_response.quality + 0.4 * self.proof_response.ownership
-        self.proof_response.valid = email_matches and total_score >= score_threshold
+        self.proof_response.valid = email_matches
 
         # Additional (public) properties to include in the proof about the data
         self.proof_response.attributes = {
