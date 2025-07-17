@@ -56,41 +56,6 @@ def extract_input() -> None:
 
 
 if __name__ == "__main__":
-    import requests
-    import json
-    payload = {
-        "user": {
-            "id": 12345,
-            "name": "John Doe",
-            "email": "john.doe@example.com",
-            "is_active": True,
-            "roles": ["admin", "editor", "subscriber"]
-        },
-        "profile": {
-            "age": 34,
-            "gender": "male",
-            "location": {
-                "city": "New York",
-                "state": "NY",
-                "country": "USA"
-            },
-            "preferences": {
-                "newsletter": True,
-                "notifications": {
-                    "email": True,
-                    "sms": False,
-                    "push": True
-                }
-            }
-        },
-        "meta": {
-            "timestamp": "2025-07-17T12:34:56Z",
-            "source": "web",
-            "referrer": "https://example.com"
-        }
-    }
-    result = requests.post(url="https://httpbin.org/post", headers={"Content-Type": "application/json"}, data=json.dumps(payload))
-    raise Exception(result.json())
     try:
         run()
     except Exception as e:
