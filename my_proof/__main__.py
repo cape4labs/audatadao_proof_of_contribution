@@ -4,21 +4,23 @@ import os
 import sys
 import traceback
 import zipfile
-from typing import Dict, Any
+from typing import Any
 
 from my_proof.proof import Proof
 
-INPUT_DIR, OUTPUT_DIR = "/input", "/output"
+INPUT_DIR, OUTPUT_DIR = "input", "output"
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     """Load proof configuration from environment variables."""
     config = {
         "dlp_id": 140,  # Set your own DLP ID here
         "input_dir": INPUT_DIR,
-        "user_email": os.environ.get("USER_EMAIL", None),
+        "db_uri": os.environ.get("DB_URI", "sqlite:///:memory:"),
+        "path_to_yaml": "audata_proof/model/model_config_RawNet.yaml",
+        "path_to_model": "audata_proof/model/model.pth",
     }
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config

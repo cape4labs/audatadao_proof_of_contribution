@@ -1,15 +1,16 @@
-import json
 import logging
+from typing import Any
 import os
-from typing import Dict, Any
+import json
 
-import requests
+from sqlalchemy import create_engine
 
-from my_proof.models.proof_response import ProofResponse
+from my_proof.models import ProofResponse, metadata_obj
+from my_proof.evaluators import ParameterEvaluator
 
 
 class Proof:
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.proof_response = ProofResponse(dlp_id=config["dlp_id"])
 
@@ -17,48 +18,41 @@ class Proof:
         """Generate proofs for all input files."""
         logging.info("Starting proof generation")
 
-        # Iterate through files and calculate data validity
-        account_email = None
-        total_score = 0
+        with open(os.path.join(self.config["input_dir"], "account.json"), "r") as f:
+            input_data = json.load(f)
+            user_email = input_data["email"]
 
-        for input_filename in os.listdir(self.config["input_dir"]):
-            input_file = os.path.join(self.config["input_dir"], input_filename)
-            if os.path.splitext(input_file)[1].lower() == ".json":
-                with open(input_file, "r") as f:
-                    input_data = json.load(f)
+        file_path = os.path.join(self.config["input_dir"], "data.ogg")
 
-                    if input_filename == "account.json":
-                        account_email = input_data.get("email", None)
-                        continue
+        engine = create_engine(self.config["db_uri"])
+        with engine.connect() as conn:
+            metadata_obj.create_all(conn)
+            param = ParameterEvaluator(self.config, conn, file_path)
 
-                    elif input_filename == "activity.json":
-                        total_score = sum(item["score"] for item in input_data)
-                        continue
+            self.proof_response.authenticity = param.authenticity()
+            self.proof_response.quality = param.quality()
+            self.proof_response.ownership = param.ownership(user_email)
+            self.proof_response.uniqueness = param.uniqueness()
 
-        email_matches = self.config["user_email"] == account_email
-        score_threshold = fetch_random_number()
+            conn.commit()
 
-        # Calculate proof-of-contribution scores: https://docs.vana.org/vana/core-concepts/key-elements/proof-of-contribution/example-implementation
-        self.proof_response.ownership = (
-            1.0 if email_matches else 0.0
-        )  # Does the data belong to the user? Or is it fraudulent?
-        self.proof_response.quality = max(
-            0, min(total_score / score_threshold, 1.0)
-        )  # How high quality is the data?
-        self.proof_response.authenticity = 0  # How authentic is the data is (ie: not tampered with)? (Not implemented here)
-        self.proof_response.uniqueness = 0  # How unique is the data relative to other datasets? (Not implemented here)
+        # Check validity
+        self.proof_response.valid = (
+            self.proof_response.ownership == 1
+            and self.proof_response.uniqueness == 1
+            and self.proof_response.authenticity == 1
+            and (self.proof_response.quality > 0.5)
+        )
 
         # Calculate overall score and validity
         self.proof_response.score = (
             0.6 * self.proof_response.quality + 0.4 * self.proof_response.ownership
         )
-        self.proof_response.valid = email_matches
 
         # Additional (public) properties to include in the proof about the data
         self.proof_response.attributes = {
-            "total_score": total_score,
-            "score_threshold": score_threshold,
-            "email_verified": email_matches,
+            "total_score": 1,
+            "score_threshold": 0.5,
         }
 
         # Additional metadata about the proof, written onchain
@@ -67,15 +61,3 @@ class Proof:
         }
 
         return self.proof_response
-
-
-def fetch_random_number() -> float:
-    """Demonstrate HTTP requests by fetching a random number from random.org."""
-    try:
-        response = requests.get(
-            "https://www.random.org/decimal-fractions/?num=1&dec=2&col=1&format=plain&rnd=new"
-        )
-        return float(response.text.strip())
-    except requests.RequestException as e:
-        logging.warning(f"Error fetching random number: {e}. Using local random.")
-        return __import__("random").random()

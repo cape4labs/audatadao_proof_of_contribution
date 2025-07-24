@@ -8,4 +8,8 @@ __pycache__/
 
 /output/results.json
 
+ruff_cache/
+
+.venv
+
 .idea/
