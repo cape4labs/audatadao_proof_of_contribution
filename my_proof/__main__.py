@@ -8,7 +8,8 @@ from typing import Any
 
 from my_proof.proof import Proof
 
-INPUT_DIR, OUTPUT_DIR = "input", "output"
+INPUT_DIR = os.environ.get("INPUT_DIR", "/input")
+OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/output")
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -18,7 +19,9 @@ def load_config() -> dict[str, Any]:
     config = {
         "dlp_id": 140,  # Set your own DLP ID here
         "input_dir": INPUT_DIR,
-        "db_uri": os.environ.get("DB_URI", "sqlite:///:memory:"),
+        "db_uri": os.environ.get(
+            "DB_URI", "postgresql+psycopg://postgres:root@localhost/audata"
+        ),
         "path_to_yaml": "audata_proof/model/model_config_RawNet.yaml",
         "path_to_model": "audata_proof/model/model.pth",
     }

@@ -5,11 +5,13 @@ from my_proof.models import users
 
 def test_ownership(conn, config):
     evaluator = ParameterEvaluator(config, conn, "")
-    result = evaluator.ownership("1@e.com")
+    result = evaluator.ownership("test_wallet_address1")
     assert result == 1
 
-    conn.execute(insert(users).values(violations=5, email="2@e.com"))
-    result = evaluator.ownership("2@e.com", violation_threshold=5)
+    conn.execute(
+        insert(users).values(violations=5, wallet_address="test_wallet_address2")
+    )
+    result = evaluator.ownership("test_wallet_address2", violation_threshold=5)
     assert result == 0
 
 

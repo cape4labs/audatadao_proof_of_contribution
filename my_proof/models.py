@@ -40,7 +40,7 @@ users = Table(
     metadata_obj,
     Column("id", Integer, autoincrement=True, primary_key=True),
     Column("violations", Integer, default=0),
-    Column("email", String(255), unique=True, index=True),
+    Column("wallet_address", String(255), unique=True, index=True),
 )
 
 fingerprints = Table(

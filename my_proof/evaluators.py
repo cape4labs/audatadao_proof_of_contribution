@@ -3,7 +3,7 @@ from typing import Literal
 
 import numpy as np
 
-import torch
+# import torch
 import librosa
 import yaml
 from acoustid import compare_fingerprints, fingerprint_file
@@ -22,17 +22,25 @@ class ParameterEvaluator:
         self.config = config
         self.file_path = file_path
 
-    def ownership(self, user_email: str, violation_threshold: int = 5) -> Literal[0, 1]:
+    def ownership(
+        self, user_wallet_address: str, violation_threshold: int = 5
+    ) -> Literal[0, 1]:
         """
         A user is considered to pass ownership test unless they have been banned.
         If the user doesn't exist, they're initialized and granted ownership.
         """
+
+        if user_wallet_address == "" or user_wallet_address is None:
+            raise ValueError("user_wallet_address is missing")
+
         try:
             violations = self.conn.execute(
-                select(users.c.violations).where(users.c.email == user_email)
+                select(users.c.violations).where(
+                    users.c.wallet_address == user_wallet_address
+                )
             ).one()[0]
         except NoResultFound:
-            self.conn.execute(insert(users).values(email=user_email))
+            self.conn.execute(insert(users).values(wallet_address=user_wallet_address))
             return 1
 
         if violations is None:
@@ -83,7 +91,11 @@ class ParameterEvaluator:
                 return 0
 
         # The fingerprint is unique, we can insert it
-        self.conn.execute(insert(fingerprints).values(duration=duration, fprint=fprint, fprint_hash=fprint_hash))
+        self.conn.execute(
+            insert(fingerprints).values(
+                duration=duration, fprint=fprint, fprint_hash=fprint_hash
+            )
+        )
 
         return 1
 
