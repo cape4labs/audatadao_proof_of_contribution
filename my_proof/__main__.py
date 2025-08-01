@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 def load_config() -> dict[str, Any]:
     """Load proof configuration from environment variables."""
     config = {
-        "dlp_id": 140,  # Set your own DLP ID here
+        "dlp_id": os.environ.get("DLP_ID"),  # Set your own DLP ID here
         "input_dir": INPUT_DIR,
         "db_uri": os.environ.get(
             "DB_URI", "postgresql+psycopg://postgres:root@localhost/audata"

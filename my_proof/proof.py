@@ -2,10 +2,9 @@ import logging
 from typing import Any
 import os
 import json
+from psycopg import connect
 
-from sqlalchemy import create_engine
-
-from my_proof.models import ProofResponse, metadata_obj
+from my_proof.models import ProofResponse
 from my_proof.evaluators import ParameterEvaluator
 
 
@@ -24,17 +23,16 @@ class Proof:
 
         file_path = os.path.join(self.config["input_dir"], "data.ogg")
 
-        # engine = create_engine(self.config["db_uri"])
-        # with engine.connect() as conn:
-        #     metadata_obj.create_all(conn)
-        #     param = ParameterEvaluator(self.config, conn, file_path)
+        #with connect(self.config["DB_URI"]) as conn:
+        #    with conn.cursor() as cur:
+        #        evaluator = ParameterEvaluator(self.config, file_path)
 
-        #     self.proof_response.authenticity = param.authenticity()
-        #     self.proof_response.quality = param.quality()
-        #     self.proof_response.ownership = param.ownership(user_wallet_address)
-        #     self.proof_response.uniqueness = param.uniqueness()
+        #        self.proof_response.authenticity = evaluator.authenticity()
+        #        self.proof_response.quality = evaluator.quality() # type: ignore
+        #        self.proof_response.ownership = evaluator.ownership(cur, user_wallet_address)
+        #        self.proof_response.uniqueness = evaluator.uniqueness(cur)
 
-        #     conn.commit()
+        #    conn.commit()
 
         self.proof_response.authenticity = 1
         self.proof_response.quality = 1

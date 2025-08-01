@@ -1,7 +1,6 @@
 from typing import Dict, Optional, Any, Text
 
 from pydantic import BaseModel
-from sqlalchemy import Float, Integer, Table, Column, String, MetaData, Text
 
 
 class ProofResponse(BaseModel):
@@ -31,25 +30,3 @@ class ProofResponse(BaseModel):
     uniqueness: float = 0.0
     attributes: Optional[Dict[str, Any]] = {}
     metadata: Optional[Dict[str, Any]] = {}
-
-
-metadata_obj = MetaData()
-
-users = Table(
-    "users",
-    metadata_obj,
-    Column("id", Integer, autoincrement=True, primary_key=True),
-    Column("violations", Integer, default=0),
-    Column("wallet_address", String(255), unique=True, index=True),
-)
-
-fingerprints = Table(
-    "fingerprints",
-    metadata_obj,
-    Column("id", Integer, autoincrement=True, primary_key=True),
-    # Needed for fingerprint comparisons
-    Column("duration", Float, nullable=False),
-    Column("fprint", Text, nullable=False),
-    # Store hash for fast uniquness lookups; 32 chars for md5
-    Column("fprint_hash", String(32), unique=True, nullable=False),
-)

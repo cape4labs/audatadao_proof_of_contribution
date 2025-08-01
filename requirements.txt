@@ -40,7 +40,6 @@ scipy==1.16.0
 soundfile==0.13.1
 soxr==0.5.0.post1
 speechmos==0.0.1.1
-sqlalchemy==2.0.41
 sympy==1.14.0
 threadpoolctl==3.6.0
 typing-extensions==4.14.1

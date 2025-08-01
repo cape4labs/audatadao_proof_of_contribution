@@ -1,54 +1,41 @@
-from hashlib import md5
 from typing import Literal
 
+from psycopg import Cursor
 import numpy as np
-
 # import torch
 import librosa
 import yaml
 from acoustid import compare_fingerprints, fingerprint_file
 from speechmos import dnsmos
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy import Connection, insert, select
-
 
 # from my_proof.model.model import RawNet
-from my_proof.models import fingerprints, users
-
 
 class ParameterEvaluator:
-    def __init__(self, config: dict, conn: Connection, file_path: str):
-        self.conn = conn
+    def __init__(self, config: dict, file_path: str):
         self.config = config
         self.file_path = file_path
 
     def ownership(
-        self, user_wallet_address: str, violation_threshold: int = 5
+        self, cur: Cursor, wallet_address: str, violation_threshold: int = 5
     ) -> Literal[0, 1]:
         """
         A user is considered to pass ownership test unless they have been banned.
         If the user doesn't exist, they're initialized and granted ownership.
         """
 
-        if user_wallet_address == "" or user_wallet_address is None:
-            raise ValueError("user_wallet_address is missing")
-
-        try:
-            violations = self.conn.execute(
-                select(users.c.violations).where(
-                    users.c.wallet_address == user_wallet_address
-                )
-            ).one()[0]
-        except NoResultFound:
-            self.conn.execute(insert(users).values(wallet_address=user_wallet_address))
-            return 1
-
+        violations = cur.execute(
+            "SELECT violations FROM users WHERE wallet_address=%s",
+            (wallet_address,)).fetchone()
         if violations is None:
+            cur.execute("INSERT INTO users(wallet_address) VALUES(%s)", (wallet_address,))
             return 1
 
-        return 0 if violations >= violation_threshold else 1
+        if violations[0] == 0:
+            return 1
 
-    def uniqueness(self, threshold: float = 0.8, yield_per: int = 100) -> Literal[0, 1]:
+        return 0 if violations[0] >= violation_threshold else 1
+
+    def uniqueness(self, cur: Cursor, threshold: float = 0.8) -> Literal[0, 1]:
         """
         yield_per: amount of entities loaded into memory while comparing fingerprints.
         """
@@ -56,46 +43,27 @@ class ParameterEvaluator:
         if not 0.0 <= threshold <= 1.0:
             raise ValueError("similarity_threshold must be between 0.0 and 1.0")
 
-        if yield_per < 1:
-            raise ValueError("yield_per must be >= 1")
-
-        # Get fingerprint, duration, and hash
+        # Get fingerprint and duration
         duration, fprint = fingerprint_file(self.file_path)
-        fprint_hash = md5(str(fprint).encode()).hexdigest()
 
-        # Check for exactly the same one
-        try:
-            self.conn.execute(
-                select(fingerprints).where(fingerprints.c.fprint_hash == fprint_hash)
-            ).one()
-            return 0
-        except NoResultFound:
-            pass
-
-        db_fprints = self.conn.execute(
-            select(fingerprints.c.duration, fingerprints.c.fprint)
-        )
+        cur.execute("SELECT duration, fprint FROM fingerprints")
         # Loop through db fingerprints and compare for similarity
         # Use yield_per to avoid loading all db in memory
-        for db_duration, db_fprint in db_fprints.yield_per(yield_per):
+        for db_duration, db_fprint in cur:
             # Decode db fingerprint
-            decoded_db_fprint = bytes.fromhex(db_fprint[2:])
-
             # Provide arguments in format (duration, fingerprint)
             # `similarity_score` is between 0.0 and 1.0
             similarity_score = compare_fingerprints(
                 (duration, fprint),
-                (db_duration, decoded_db_fprint),
+                (db_duration, db_fprint),
             )
             if similarity_score >= threshold:
                 return 0
 
         # The fingerprint is unique, we can insert it
-        self.conn.execute(
-            insert(fingerprints).values(
-                duration=duration, fprint=fprint, fprint_hash=fprint_hash
-            )
-        )
+        cur.execute(
+            "INSERT INTO fingerprints(duration, fprint) VALUES(%s, %s)",
+            (duration, fprint))
 
         return 1
 

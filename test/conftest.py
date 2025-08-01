@@ -1,18 +1,17 @@
+import os
 import pytest
-from sqlalchemy import create_engine
+import psycopg
 
-from my_proof.models import metadata_obj
 from my_proof.__main__ import load_config
 
-
 @pytest.fixture
-def conn():
-    engine = create_engine("postgresql+psycopg://postgres:root@localhost/audata")
-    with engine.connect() as conn:
-        metadata_obj.create_all(conn)
-        conn.commit()
-        yield conn
-        # Don't commit here in order to prevent test data from saving
+def cur():
+    test_db_uri = os.getenv("TEST_DB_URI", "postgresql://postgres:root@localhost/audata")
+    with psycopg.connect(test_db_uri, autocommit=False) as conn:
+        with conn.cursor() as cur:
+            yield cur
+            # Prevent data from being saved; with psycopg3 you should do that explicitly
+            conn.rollback()
 
 
 @pytest.fixture
