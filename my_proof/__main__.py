@@ -20,10 +20,9 @@ def load_config() -> dict[str, Any]:
         "dlp_id": os.environ.get("DLP_ID"),  # Set your own DLP ID here
         "input_dir": INPUT_DIR,
         "db_uri": os.environ.get(
-            "DB_URI", "postgresql+psycopg://postgres:root@localhost/audata"
+            "DB_URI", "postgresql://postgres:root@localhost/audata"
         ),
-        "path_to_yaml": "audata_proof/model/model_config_RawNet.yaml",
-        "path_to_model": "audata_proof/model/model.pth",
+        "path_to_model": "model.onnx",
     }
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config

@@ -23,21 +23,25 @@ class Proof:
 
         file_path = os.path.join(self.config["input_dir"], "data.ogg")
 
-        #with connect(self.config["DB_URI"]) as conn:
-        #    with conn.cursor() as cur:
-        #        evaluator = ParameterEvaluator(self.config, file_path)
+        # Evaluate parameters
+        evaluator = ParameterEvaluator(self.config, file_path)
 
-        #        self.proof_response.authenticity = evaluator.authenticity()
-        #        self.proof_response.quality = evaluator.quality() # type: ignore
-        #        self.proof_response.ownership = evaluator.ownership(cur, user_wallet_address)
-        #        self.proof_response.uniqueness = evaluator.uniqueness(cur)
+        with connect(self.config["db_uri"]) as conn:
+            with conn.cursor() as cur:
+                try:
+                    self.proof_response.uniqueness = evaluator.uniqueness(cur)
+                    self.proof_response.ownership = evaluator.ownership(
+                        cur, user_wallet_address
+                    )
+                except Exception:
+                    conn.rollback()
+                    raise
+            conn.commit()
 
-        #    conn.commit()
-
-        self.proof_response.authenticity = 1
-        self.proof_response.quality = 1
-        self.proof_response.ownership = 1
-        self.proof_response.uniqueness = 1
+        # Run the most expensive operations only after operations with network
+        # (which may have network interruptions) access are done
+        self.proof_response.authenticity = evaluator.authenticity()
+        self.proof_response.quality = evaluator.quality()
 
         # Check validity
         self.proof_response.valid = (

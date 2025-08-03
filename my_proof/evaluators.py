@@ -1,14 +1,12 @@
 from typing import Literal
 
-from psycopg import Cursor
+from psycopg import Cursor, DataError
 import numpy as np
-# import torch
+import onnxruntime
 import librosa
-import yaml
 from acoustid import compare_fingerprints, fingerprint_file
 from speechmos import dnsmos
 
-# from my_proof.model.model import RawNet
 
 class ParameterEvaluator:
     def __init__(self, config: dict, file_path: str):
@@ -24,11 +22,12 @@ class ParameterEvaluator:
         """
 
         violations = cur.execute(
-            "SELECT violations FROM users WHERE wallet_address=%s",
-            (wallet_address,)).fetchone()
+            "SELECT violations FROM users WHERE wallet_address=%s", (wallet_address,)
+        ).fetchone()
         if violations is None:
-            cur.execute("INSERT INTO users(wallet_address) VALUES(%s)", (wallet_address,))
-            return 1
+            raise DataError(
+                "Wallet address must always be present in database when running PoC."
+            )
 
         if violations[0] == 0:
             return 1
@@ -63,24 +62,14 @@ class ParameterEvaluator:
         # The fingerprint is unique, we can insert it
         cur.execute(
             "INSERT INTO fingerprints(duration, fprint) VALUES(%s, %s)",
-            (duration, fprint))
+            (duration, fprint),
+        )
 
         return 1
 
     def authenticity(self) -> Literal[0, 1]:
-        with open(self.config["path_to_yaml"], "r") as f:
-            custom_config = yaml.safe_load(f)
-
-        device = torch.device("cpu")
-
-        model = RawNet(custom_config["model"], device=device)
-        model.load_state_dict(
-            torch.load(
-                self.config["path_to_model"], map_location="cpu", weights_only=False
-            )
-        )
-        model.eval()
-        model = model.to(device)
+        session = onnxruntime.InferenceSession("model.onnx")
+        input_name = session.get_inputs()[0].name
 
         y, sr = librosa.load(self.file_path, sr=None)
 
@@ -89,33 +78,35 @@ class ParameterEvaluator:
 
         segments = []
         max_len = 96000
-        total_len = len(y)
+        total_length = len(y)
 
-        if total_len <= max_len:
-            y_pad = self._pad(y, max_len)
-            segments.append(torch.tensor(y_pad, dtype=torch.float32))
+        if total_length <= max_len:
+            padded = np.zeros(max_len, dtype=np.float32)
+            padded[: len(y)] = y
+            segments.append(padded)
         else:
-            num_chunks = total_len // max_len
+            num_chunks = total_length // max_len
             for i in range(num_chunks):
                 seg = y[i * max_len : (i + 1) * max_len]
-                segments.append(
-                    torch.tensor(self._pad(seg, max_len), dtype=torch.float32)
-                )
+                segments.append(seg.astype(np.float32))
 
-        model.eval()
         probs = []
-        with torch.no_grad():
-            for segment in segments:
-                input_tensor = segment.unsqueeze(0).to(device)
-                output = model(input_tensor)
-                if isinstance(output, tuple):
-                    output = output[0]
-                softmax_out = torch.softmax(output, dim=1)[0][1].item()
-                probs.append(softmax_out)
+
+        for segment in segments:
+            input_array = np.expand_dims(segment, axis=0).astype(
+                np.float32
+            )  # (1, 96000)
+            output = session.run(None, {input_name: input_array})[0]
+
+            e_x = np.exp(output - np.max(output, axis=1, keepdims=True))  # type: ignore
+            softmax = e_x / np.sum(e_x, axis=1, keepdims=True)
+            probs.append(float(softmax[0][1]))
 
         final_prob = float(np.mean(probs))
+
         print("Likely Real" if final_prob > 0.5 else "Likely Fake")
-        print(f"Score: {final_prob}")
+        print(f"Score: {final_prob:.4f}")
+
         return 1 if final_prob > 0.5 else 0
 
     def _pad(self, y, max_len=96000):
@@ -127,11 +118,12 @@ class ParameterEvaluator:
         padded_x = np.tile(y, num_repeats)[:max_len]
         return padded_x
 
-    def quality(self, target_sr=16000, max_duration=120.0):
+    def quality(self, target_sr=16000, max_duration=660.0) -> float:
         amplitudes, _ = librosa.load(
             self.file_path, sr=target_sr
         )  # for dnsmos we need sr=16000
         signal = librosa.util.normalize(amplitudes)
+        duration = librosa.get_duration(path=self.file_path)
 
         result = dnsmos.run(signal, sr=target_sr)
         del result["p808_mos"]  # delete P.808 metric # type: ignore
@@ -140,8 +132,11 @@ class ParameterEvaluator:
 
         # It is not used due to the fact that we haven't decided how to score
         # audio in accordance with its duration
-        # duration_score = min(duration / max_duration, 1.0)
+        duration_score = min(duration / max_duration, 1.0)
 
-        print("Quality evaluation complete:", sig_score)
+        # Apply 0.5 cutting of duration score
+        resulted_quality = sig_score * duration_score
 
-        return sig_score
+        print("Quality evaluation complete:", resulted_quality)
+
+        return float(resulted_quality)

@@ -3,10 +3,7 @@
 __pycache__/
 *.pyc
 
-/input/account.json
-/input/activity.json
-
-/output/results.json
+.pytest_cache/
 
 ruff_cache/
 
