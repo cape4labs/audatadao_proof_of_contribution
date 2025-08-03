@@ -135,7 +135,7 @@ class ParameterEvaluator:
         duration_score = min(duration / max_duration, 1.0)
 
         # Apply 0.5 cutting of duration score
-        resulted_quality = sig_score * duration_score
+        resulted_quality = sig_score * (1 - (1 - duration_score) * 0.5)
 
         print("Quality evaluation complete:", resulted_quality)
 
