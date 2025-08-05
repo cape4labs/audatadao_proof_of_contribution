@@ -12,7 +12,7 @@ class Proof:
         self.config = config
         self.proof_response = ProofResponse(dlp_id=config["dlp_id"])
 
-    def generate(self, files) -> ProofResponse:
+    def generate(self) -> ProofResponse:
         """Generate proofs for all input files."""
         logging.info("Starting proof generation")
 
@@ -20,18 +20,13 @@ class Proof:
 
         file_path = None
 
-        file_paths = []
-
         for input_filename in os.listdir(self.config['input_dir']):
             input_file = os.path.join(self.config['input_dir'], input_filename)
-            file_paths.append(input_file)
             if os.path.splitext(input_file)[1].lower() == '.ogg':
                 file_path = input_file
 
         if not file_path:
             print(os.listdir(self.config['input_dir']))
-
-        raise Exception(os.listdir(self.config['input_dir']), os.listdir(self.config['output_dir']), file_paths, files)
 
         # Evaluate parameters
         # evaluator = ParameterEvaluator(self.config, file_path)

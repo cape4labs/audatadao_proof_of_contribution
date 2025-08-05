@@ -40,8 +40,7 @@ def run() -> None:
     extract_input()
 
     proof = Proof(config)
-    files = extract_input()
-    proof_response = proof.generate(files)
+    proof_response = proof.generate()
 
     output_path = os.path.join(OUTPUT_DIR, "results.json")
     with open(output_path, "w") as f:
@@ -49,20 +48,17 @@ def run() -> None:
     logging.info(f"Proof generation complete: {proof_response}")
 
 
-def extract_input() -> list:
+def extract_input() -> None:
     """
     If the input directory contains any zip files, extract them
     :return:
     """
-    files = []
     for input_filename in os.listdir(INPUT_DIR):
         input_file = os.path.join(INPUT_DIR, input_filename)
-        files.append(input_file)
 
         if zipfile.is_zipfile(input_file):
             with zipfile.ZipFile(input_file, "r") as zip_ref:
                 zip_ref.extractall(INPUT_DIR)
-    return files
 
 
 if __name__ == "__main__":
