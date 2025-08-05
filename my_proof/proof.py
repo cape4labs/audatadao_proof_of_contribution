@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 import os
-import json
 from psycopg import connect
 
 from my_proof.models import ProofResponse
@@ -17,9 +16,7 @@ class Proof:
         """Generate proofs for all input files."""
         logging.info("Starting proof generation")
 
-        with open(os.path.join(self.config["input_dir"], "account.json"), "r") as f:
-            input_data = json.load(f)
-            user_wallet_address = input_data["wallet_address"]
+        user_wallet_address = self.config["user_wallet_address"]
 
         file_path = os.path.join(self.config["input_dir"], "data.ogg")
 

@@ -1,0 +1,16 @@
+{
+  "dlp_id": 140,
+  "valid": false,
+  "score": 0.5693724167151363,
+  "authenticity": 1,
+  "ownership": 1,
+  "quality": 0.2822873611918938,
+  "uniqueness": 0,
+  "attributes": {
+    "total_score": 1,
+    "score_threshold": 0.5
+  },
+  "metadata": {
+    "dlp_id": "140"
+  }
+}

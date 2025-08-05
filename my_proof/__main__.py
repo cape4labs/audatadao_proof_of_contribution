@@ -23,6 +23,7 @@ def load_config() -> dict[str, Any]:
             "DB_URI", "postgresql://postgres:root@localhost/audata"
         ),
         "path_to_model": "model.onnx",
+        "user_wallet_address": os.environ.get("OWNER_ADDRESS")
     }
     logging.info(f"Using config: {json.dumps(config, indent=2)}")
     return config
