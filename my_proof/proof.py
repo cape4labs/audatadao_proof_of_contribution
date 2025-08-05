@@ -20,6 +20,8 @@ class Proof:
 
         file_path = None
 
+        raise Exception(os.listdir(self.config['input_dir']))
+
         for input_filename in os.listdir(self.config['input_dir']):
             input_file = os.path.join(self.config['input_dir'], input_filename)
             if os.path.splitext(input_file)[1].lower() == '.ogg':
