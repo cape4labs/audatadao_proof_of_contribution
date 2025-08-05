@@ -19,6 +19,7 @@ def load_config() -> dict[str, Any]:
     config = {
         "dlp_id": int(os.environ.get("DLP_ID")),  # Set your own DLP ID here
         "input_dir": INPUT_DIR,
+        "output_dir": OUTPUT_DIR,
         "db_uri": os.environ.get(
             "DB_URI", "postgresql://postgres:root@localhost/audata"
         ),
