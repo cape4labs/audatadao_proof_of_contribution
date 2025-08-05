@@ -18,7 +18,15 @@ class Proof:
 
         user_wallet_address = self.config["user_wallet_address"]
 
-        file_path = os.path.join(self.config["input_dir"], "data.ogg")
+        file_path = None
+
+        for input_filename in os.listdir(self.config['input_dir']):
+            input_file = os.path.join(self.config['input_dir'], input_filename)
+            if os.path.splitext(input_file)[1].lower() == '.ogg':
+                file_path = input_file
+
+        if not file_path:
+            print(os.listdir(self.config['input_dir']))
 
         # Evaluate parameters
         evaluator = ParameterEvaluator(self.config, file_path)
