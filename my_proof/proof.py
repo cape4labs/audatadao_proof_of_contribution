@@ -55,7 +55,7 @@ class Proof:
             self.proof_response.ownership == 1
             and self.proof_response.uniqueness == 1
             and self.proof_response.authenticity == 1
-            and (self.proof_response.quality > 0.2)
+            and (self.proof_response.quality > 0.1)
         )
 
         # Calculate overall score and validity
