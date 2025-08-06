@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 import os
+import json
 from psycopg import connect
 
 from my_proof.models import ProofResponse
@@ -16,39 +17,38 @@ class Proof:
         """Generate proofs for all input files."""
         logging.info("Starting proof generation")
 
-        user_wallet_address = self.config["user_wallet_address"]
-
-        file_path = None
-
-        for input_filename in os.listdir(self.config['input_dir']):
-            input_file = os.path.join(self.config['input_dir'], input_filename)
-            if os.path.splitext(input_file)[1].lower() == '.ogg':
+        for input_filename in os.listdir(self.config["input_dir"]):
+            input_file = os.path.join(self.config["input_dir"], input_filename)
+            ext = os.path.splitext(input_file)[1].lower()
+            if ext == ".ogg":
                 file_path = input_file
+            elif ext == ".json":
+                with open(input_file, "r") as f:
+                    input_data = json.load(f)
+                    user_wallet_address = input_data["user"]["wallet_address"]
 
-        if not file_path:
-            print(os.listdir(self.config['input_dir']))
+        if not file_path or not user_wallet_address:
+            print(os.listdir(self.config["input_dir"]))
 
         # Evaluate parameters
-        # evaluator = ParameterEvaluator(self.config, file_path)
+        evaluator = ParameterEvaluator(self.config, file_path)
 
-        # with connect(self.config["db_uri"]) as conn:
-        #     with conn.cursor() as cur:
-        #         try:
-        #             self.proof_response.uniqueness = evaluator.uniqueness(cur)
-        #             self.proof_response.ownership = evaluator.ownership(
-        #                 cur, user_wallet_address
-        #             )
-        #         except Exception:
-        #             conn.rollback()
-        #             raise
-        #     conn.commit()
+        with connect(self.config["db_uri"]) as conn:
+            with conn.cursor() as cur:
+                try:
+                    self.proof_response.uniqueness = evaluator.uniqueness(cur)
+                    self.proof_response.ownership = evaluator.ownership(
+                        cur, user_wallet_address
+                    )
+                except Exception:
+                    conn.rollback()
+                    raise
+            conn.commit()
 
         # Run the most expensive operations only after operations with network
         # (which may have network interruptions) access are done
-        self.proof_response.uniqueness = 1
-        self.proof_response.ownership = 1
-        self.proof_response.authenticity = 1 # evaluator.authenticity()
-        self.proof_response.quality = 1 # evaluator.quality()
+        self.proof_response.authenticity = evaluator.authenticity()
+        self.proof_response.quality = evaluator.quality()
 
         # Check validity
         self.proof_response.valid = (

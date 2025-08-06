@@ -22,7 +22,7 @@ class ParameterEvaluator:
         """
 
         violations = cur.execute(
-            "SELECT violations FROM users WHERE wallet_address=%s", (wallet_address,)
+            "SELECT violations FROM users WHERE address=%s", (wallet_address,)
         ).fetchone()
         if violations is None:
             raise DataError(
