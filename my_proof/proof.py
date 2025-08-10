@@ -33,30 +33,38 @@ class Proof:
         # Evaluate parameters
         evaluator = ParameterEvaluator(self.config, file_path)
 
-        with connect(self.config["db_uri"]) as conn:
-            with conn.cursor() as cur:
-                try:
-                    self.proof_response.uniqueness = evaluator.uniqueness(cur)
-                    self.proof_response.ownership = evaluator.ownership(
-                        cur, user_wallet_address
-                    )
-                except Exception:
-                    conn.rollback()
-                    raise
-            conn.commit()
-
         # Run the most expensive operations only after operations with network
         # (which may have network interruptions) access are done
         self.proof_response.authenticity = evaluator.authenticity()
         self.proof_response.quality = evaluator.quality()
 
-        # Check validity
-        self.proof_response.valid = (
-            self.proof_response.ownership == 1
-            and self.proof_response.uniqueness == 1
-            and self.proof_response.authenticity == 1
-            and (self.proof_response.quality > 0.1)
-        )
+        with connect(self.config["db_uri"]) as conn:
+            with conn.cursor() as cur:
+                try:
+                    self.proof_response.uniqueness, duration, fprint = evaluator.uniqueness(cur)
+                    self.proof_response.ownership = evaluator.ownership(
+                        cur, user_wallet_address
+                    )
+
+                    # Check validity
+                    self.proof_response.valid = (
+                        self.proof_response.ownership == 1
+                        and self.proof_response.uniqueness == 1
+                        and self.proof_response.authenticity == 1
+                        and (self.proof_response.quality > 0.1)
+                    )
+
+                    if self.proof_response.valid:
+                        # The fingerprint is unique, we can insert it
+                        cur.execute(
+                            "INSERT INTO fingerprints(duration, fprint) VALUES(%s, %s)",
+                            (duration, fprint),
+                        )
+
+                except Exception:
+                    conn.rollback()
+                    raise
+            conn.commit()
 
         # Calculate overall score and validity
         self.proof_response.score = (

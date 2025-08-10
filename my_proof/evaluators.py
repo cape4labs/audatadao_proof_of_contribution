@@ -34,7 +34,7 @@ class ParameterEvaluator:
 
         return 0 if violations[0] >= violation_threshold else 1
 
-    def uniqueness(self, cur: Cursor, threshold: float = 0.8) -> Literal[0, 1]:
+    def uniqueness(self, cur: Cursor, threshold: float = 0.8) -> tuple:
         """
         yield_per: amount of entities loaded into memory while comparing fingerprints.
         """
@@ -57,15 +57,9 @@ class ParameterEvaluator:
                 (db_duration, db_fprint),
             )
             if similarity_score >= threshold:
-                return 0
+                return 0, 0, 0
 
-        # The fingerprint is unique, we can insert it
-        cur.execute(
-            "INSERT INTO fingerprints(duration, fprint) VALUES(%s, %s)",
-            (duration, fprint),
-        )
-
-        return 1
+        return 1, duration, fprint
 
     def authenticity(self) -> Literal[0, 1]:
         session = onnxruntime.InferenceSession("model.onnx")
@@ -104,10 +98,10 @@ class ParameterEvaluator:
 
         final_prob = float(np.mean(probs))
 
-        print("Likely Real" if final_prob > 0.5 else "Likely Fake")
+        print("Likely Real" if final_prob > 0.1 else "Likely Fake")
         print(f"Score: {final_prob:.4f}")
 
-        return 1 if final_prob > 0.5 else 0
+        return 1 if final_prob > 0.1 else 0
 
     def _pad(self, y, max_len=96000):
         x_len = y.shape[0]
