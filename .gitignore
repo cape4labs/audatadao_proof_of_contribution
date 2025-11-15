@@ -11,3 +11,6 @@ ruff_cache/
 .env
 
 .idea/
+
+!input/.gitkeep
+!output/.gitkeep
