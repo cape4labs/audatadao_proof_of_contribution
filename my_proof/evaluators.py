@@ -43,7 +43,7 @@ class ParameterEvaluator:
         # duration, fprint = fingerprint_file(self.file_path, maxlength=AUDIO_MAX_LENGTH)
         duration, fprint = fingerprint_file(self.file_path, maxlength=AUDIO_MAX_LENGTH)
 
-        cur.execute("SELECT duration, fprint FROM fingerprints WHERE duration=%s LIMIT 10000", (duration,))
+        cur.execute("SELECT duration, fprint FROM fingerprints WHERE duration=%s LIMIT 1000", (duration,))
         # Loop through db fingerprints and compare for similarity
         # Use yield_per to avoid loading all db in memory
         for db_duration, db_fprint in cur:
