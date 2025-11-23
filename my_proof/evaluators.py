@@ -1,9 +1,6 @@
 from typing import Literal
 
 from psycopg import Cursor, DataError
-import numpy as np
-import onnxruntime
-import librosa
 from acoustid import compare_fingerprints, fingerprint_file
 
 # max length of audio to use for optimization purposes
@@ -58,45 +55,3 @@ class ParameterEvaluator:
                 return 0, 0, 0
 
         return 1, duration, fprint
-
-    def authenticity(self) -> Literal[0, 1]:
-        session = onnxruntime.InferenceSession("model.onnx")
-        input_name = session.get_inputs()[0].name
-
-        y, sr = librosa.load(self.file_path, sr=None)
-
-        if sr != 24000:
-            y = librosa.resample(y, orig_sr=sr, target_sr=24000)
-
-        segments = []
-        max_len = 96000
-        total_length = len(y)
-
-        if total_length <= max_len:
-            padded = np.zeros(max_len, dtype=np.float32)
-            padded[: len(y)] = y
-            segments.append(padded)
-        else:
-            num_chunks = total_length // max_len
-            for i in range(num_chunks):
-                seg = y[i * max_len : (i + 1) * max_len]
-                segments.append(seg.astype(np.float32))
-
-        probs = []
-
-        for segment in segments:
-            input_array = np.expand_dims(segment, axis=0).astype(
-                np.float32
-            )  # (1, 96000)
-            output = session.run(None, {input_name: input_array})[0]
-
-            e_x = np.exp(output - np.max(output, axis=1, keepdims=True))  # type: ignore
-            softmax = e_x / np.sum(e_x, axis=1, keepdims=True)
-            probs.append(float(softmax[0][1]))
-
-        final_prob = float(np.mean(probs))
-
-        print("Likely Real" if final_prob > 0.1 else "Likely Fake")
-        print(f"Score: {final_prob:.4f}")
-
-        return 1 if final_prob > 0.1 else 0
